@@ -173,7 +173,7 @@ public class ForegroundService extends Service {
 	@RequiresApi(Build.VERSION_CODES.O)
 	private String createNotificationChannel(String channelId, String channelName) {
 		NotificationChannel chan = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW);
-		chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+		chan.setLockscreenVisibility(NotificationCompat.VISIBILITY_PRIVATE);
 		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		nm.createNotificationChannel(chan);
 		return channelId;
@@ -207,7 +207,7 @@ public class ForegroundService extends Service {
 				.setSmallIcon(getIconResId(settings));
 
 		if (settings.optBoolean("hidden", true)) {
-			notification.setPriority(Notification.PRIORITY_MIN);
+			notification.setPriority(NotificationCompat.PRIORITY_MIN);
 		}
 
 		if (bigText || text.contains("\n")) {
@@ -296,7 +296,7 @@ public class ForegroundService extends Service {
      * @param settings A JSON dict containing the color definition (red: FF0000)
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void setColor (Notification.Builder notification, JSONObject settings)
+    private void setColor (NotificationCompat.Builder notification, JSONObject settings)
     {
 
         String hex = settings.optString("color", null);
