@@ -24,6 +24,7 @@ package de.appplant.cordova.plugin.background;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -34,7 +35,8 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
-import android.app.NotificationChannel;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
 
 import org.json.JSONObject;
 
@@ -89,16 +91,21 @@ public class ForegroundService extends Service {
         }
     }
 
-    /**
-     * Put the service in a foreground state to prevent app from being killed
-     * by the OS.
-     */
-    @Override
-    public void onCreate()
-    {
-        super.onCreate();
-        keepAwake();
-    }
+	@Override
+	public boolean onUnbind(Intent intent) {
+		stopSelf();
+		return super.onUnbind(intent);
+	}
+
+	/**
+	 * Put the service in a foreground state to prevent app from being killed
+	 * by the OS.
+	 */
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		keepAwake();
+	}
 
     /**
      * No need to run headless on destroy.
@@ -163,73 +170,65 @@ public class ForegroundService extends Service {
         return makeNotification(BackgroundMode.getSettings());
     }
 
-    /**
-     * Create a notification as the visible part to be able to put the service
-     * in a foreground state.
-     *
-     * @param settings The config settings
-     */
-    private Notification makeNotification (JSONObject settings)
-    {
-        // use channelid for Oreo and higher
-        String CHANNEL_ID = "cordova-plugin-background-mode-id";
-        if(Build.VERSION.SDK_INT >= 26){
-        // The user-visible name of the channel.
-        CharSequence name = "cordova-plugin-background-mode";
-        // The user-visible description of the channel.
-        String description = "cordova-plugin-background-moden notification";
+	@RequiresApi(Build.VERSION_CODES.O)
+	private String createNotificationChannel(String channelId, String channelName) {
+		NotificationChannel chan = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW);
+		chan.setLockscreenVisibility(NotificationCompat.VISIBILITY_PRIVATE);
+		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		nm.createNotificationChannel(chan);
+		return channelId;
+	}
 
-        int importance = NotificationManager.IMPORTANCE_LOW;
+	/**
+	 * Create a notification as the visible part to be able to put the service
+	 * in a foreground state.
+	 *
+	 * @param settings The config settings
+	 */
+	private Notification makeNotification(JSONObject settings) {
 
-        NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name,importance);
+		String CHANNEL_ID = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
+				createNotificationChannel("cordova-plugin-background-mode-id", "cordova-plugin-background-mode")
+				: "";
 
-        // Configure the notification channel.
-        mChannel.setDescription(description);
+		String title = settings.optString("title", NOTIFICATION_TITLE);
+		String text = settings.optString("text", NOTIFICATION_TEXT);
+		boolean bigText = settings.optBoolean("bigText", false);
 
-        getNotificationManager().createNotificationChannel(mChannel);
-        }
-        String title    = settings.optString("title", NOTIFICATION_TITLE);
-        String text     = settings.optString("text", NOTIFICATION_TEXT);
-        boolean bigText = settings.optBoolean("bigText", false);
+		Context context = getApplicationContext();
+		String pkgName = context.getPackageName();
+		Intent intent = context.getPackageManager()
+				.getLaunchIntentForPackage(pkgName);
 
-        Context context = getApplicationContext();
-        String pkgName  = context.getPackageName();
-        Intent intent   = context.getPackageManager()
-                .getLaunchIntentForPackage(pkgName);
+		NotificationCompat.Builder notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+				.setContentTitle(title)
+				.setContentText(text)
+				.setOngoing(true)
+				.setSmallIcon(getIconResId(settings));
 
-        Notification.Builder notification = new Notification.Builder(context)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setOngoing(true)
-                .setSmallIcon(getIconResId(settings));
+		if (settings.optBoolean("hidden", true)) {
+			notification.setPriority(NotificationCompat.PRIORITY_MIN);
+		}
 
-        if(Build.VERSION.SDK_INT >= 26){
-                   notification.setChannelId(CHANNEL_ID);
-        }
+		if (bigText || text.contains("\n")) {
+			notification.setStyle(new NotificationCompat.BigTextStyle().bigText(text));
+		}
 
-        if (settings.optBoolean("hidden", true)) {
-            notification.setPriority(Notification.PRIORITY_MIN);
-        }
+		setColor(notification, settings);
 
-        if (bigText || text.contains("\n")) {
-            notification.setStyle(
-                    new Notification.BigTextStyle().bigText(text));
-        }
+		if (intent != null && settings.optBoolean("resume")) {
+			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+			PendingIntent contentIntent = PendingIntent.getActivity(
+					context,
+					NOTIFICATION_ID,
+					intent,
+					PendingIntent.FLAG_UPDATE_CURRENT);
 
-        setColor(notification, settings);
+			notification.setContentIntent(contentIntent);
+		}
 
-        if (intent != null && settings.optBoolean("resume")) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent contentIntent = PendingIntent.getActivity(
-                    context, NOTIFICATION_ID, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
-
-
-            notification.setContentIntent(contentIntent);
-        }
-
-        return notification.build();
-    }
+		return notification.build();
+	}
 
     /**
      * Update the notification.
@@ -297,7 +296,7 @@ public class ForegroundService extends Service {
      * @param settings A JSON dict containing the color definition (red: FF0000)
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void setColor (Notification.Builder notification, JSONObject settings)
+    private void setColor (NotificationCompat.Builder notification, JSONObject settings)
     {
 
         String hex = settings.optString("color", null);

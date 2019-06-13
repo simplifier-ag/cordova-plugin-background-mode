@@ -21,8 +21,8 @@
 
 package de.appplant.cordova.plugin.background;
 
-import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
@@ -160,7 +160,6 @@ public class BackgroundMode extends CordovaPlugin {
     public void onDestroy()
     {
         stopService();
-        android.os.Process.killProcess(android.os.Process.myPid());
     }
 
     /**
@@ -234,7 +233,7 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void startService()
     {
-        Activity context = cordova.getActivity();
+        Context context = cordova.getContext();
 
         if (isDisabled || isBind)
             return;
@@ -258,14 +257,14 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void stopService()
     {
-        Activity context = cordova.getActivity();
-        Intent intent    = new Intent(context, ForegroundService.class);
+        Context context = cordova.getContext();
+        Intent intent = new Intent(context, ForegroundService.class);
 
         if (!isBind) return;
 
         fireEvent(Event.DEACTIVATE, null);
+		context.stopService(intent);
         context.unbindService(connection);
-        context.stopService(intent);
 
         isBind = false;
     }
