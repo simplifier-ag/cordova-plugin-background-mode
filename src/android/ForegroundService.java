@@ -40,6 +40,7 @@ import android.support.v4.app.NotificationCompat;
 
 import org.json.JSONObject;
 
+import static android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
 import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 
 /**
