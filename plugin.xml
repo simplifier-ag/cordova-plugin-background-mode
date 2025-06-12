@@ -71,16 +71,13 @@
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="application">
-            <service android:name="de.appplant.cordova.plugin.background.ForegroundService" />
+            <service android:name="de.appplant.cordova.plugin.background.ForegroundService" android:foregroundServiceType="dataSync"/>
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">
             <uses-permission android:name="android.permission.WAKE_LOCK" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-        </config-file>
-
-        <config-file target="AndroidManifest.xml" parent="/manifest">
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
         </config-file>
 
         <source-file
